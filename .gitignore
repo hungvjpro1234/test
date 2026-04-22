@@ -41,3 +41,7 @@ load-testing/k6.exe
 ACTIVITY_DIAGRAM.md
 DOCKER_SETUP.md
 KET_LUAN_VA_HUONG_PHAT_TRIEN.md
+
+# Ignore JMeter result files
+tool-test/jmeter/results/
+*.jtl
