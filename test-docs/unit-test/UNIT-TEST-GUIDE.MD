@@ -1,82 +1,159 @@
-Chào bạn, dựa trên yêu cầu của bạn về việc kết hợp giữa nội dung trong tệp "UNIT_TEST.pdf" (phần 5.3) và các yêu cầu cụ thể từ đề bài, tôi xin gửi tới bạn mẫu báo cáo kiểm thử đơn vị hoàn chỉnh từ đầu đến cuối như sau:
+# UNIT TEST GUIDE
 
----
+## Mục tiêu
+- Repo này dùng chiến lược 2 lớp cho backend test:
+  - `unit-test/backend/tests/**/*.test.js`: unit test mock-based cho pure logic, validation, permission matrix.
+  - `unit-test/backend/tests-integration/**/*.int.test.js`: integration test dùng MongoDB thật để kiểm tra persistence, check DB và cleanup.
+- Frontend giữ nguyên hướng unit test hiện tại.
 
-# BÁO CÁO KIỂM THỬ ĐƠN VỊ (UNIT TESTING REPORT)
+## Cấu trúc chuẩn
+```text
+unit-test/
+├── PLAN.md
+├── backend/
+│   ├── jest.config.js
+│   ├── jest.integration.config.js
+│   ├── package.json
+│   ├── setup.js
+│   ├── tests/
+│   │   └── ...
+│   └── tests-integration/
+│       ├── _helpers/
+│       │   ├── db.js
+│       │   └── fixtures.js
+│       └── services/
+│           ├── note.service.int.test.js
+│           └── task.service.int.test.js
+└── docs/
+    └── UNIT_TEST_REPORT.md
+```
 
-**Thông tin chung:**
-*   **Họ và tên:** [Nguyễn Văn A]
-*   **Mã sinh viên:** [B21DCCNxxx]
-*   **Lớp:** [Nhóm môn học]
-*   **Tên bài tập:** [Bài tập lớn ...]
+## Quy tắc cho integration test
 
----
+### 1. DB test riêng
+- Luôn dùng `MONGODB_URI_TEST`.
+- Fallback mặc định: `mongodb://127.0.0.1:27017/todolist_test`.
+- Không dùng `MONGODB_URI` của dev/prod.
+- Helper kết nối phải fail fast nếu URI không có dấu hiệu là DB test.
 
-### 1. Thông tin kỹ thuật (Technical Information)
+### 2. Marker bắt buộc
+- Mỗi file integration có `TEST_RUN_ID = "__it_<timestamp>_<rand>"`.
+- Mọi fixture tạo ra phải gắn marker vào field queryable:
+  - `User.email`, `User.name`
+  - `Group.name`
+  - `Folder.name`
+  - `Note.title`
+  - `Task.title`
 
-#### 1.1. Công cụ và thư viện (Tools and Libraries)
-*   **Testing Framework:** [Ví dụ: JUnit 5, PyTest, Jest...].
-*   **Thư viện hỗ trợ:** [Ví dụ: Mockito, JaCoCo, Coverage.py, DBUnit...].
+### 3. Lifecycle chuẩn
+```js
+beforeAll(async () => {
+  await connectTestDb();
+});
 
-#### 1.2. Phạm vi kiểm thử (Scope of Testing)
-Dựa theo quy trình:
-*   **Thành phần được kiểm thử:** Tất cả các lớp (class) và phương thức (method) trong hệ thống (ngoại trừ các Interface). Danh sách bao gồm: [Liệt kê các file/class như DangkihocDAO, KihocDAO...].
-*   **Thành phần không kiểm thử:** Các Interface (do không chứa code thực thi trực tiếp).
-*   **Lý do:** Mục tiêu là đảm bảo từng đơn vị (method, class) thực hiện đúng thiết kế và đạt **mức phủ cấp 2 (phủ hết các nhánh trong source code)**.
+afterEach(async () => {
+  await cleanupByRunId(TEST_RUN_ID);
+  await assertCleanRunId(TEST_RUN_ID);
+});
 
----
+afterAll(async () => {
+  await cleanupByRunId(TEST_RUN_ID);
+  await assertCleanRunId(TEST_RUN_ID);
+  await disconnectTestDb();
+});
+```
 
-### 2. Danh sách các Ca kiểm thử (Unit Test Cases)
-*Template này kết hợp cột từ đề bài và nội dung phân loại theo Function/Method từ tài liệu. Bạn nên trình bày trong file Excel.*
+### 4. Cleanup
+- Cleanup theo collection, không drop database.
+- Xóa child collections trước:
+  - `Task`
+  - `Note`
+  - `Folder`
+  - `Group`
+  - `User`
+- Sau cleanup phải có smoke check để xác nhận không còn document chứa marker.
 
-| Test Case ID | Chức năng / Phương thức (Function/Method) | Mục tiêu kiểm thử (Test Objective) | Dữ liệu vào (Input) | Kết quả mong đợi (Expected Output) | Ghi chú (Notes) |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **TC_DK_01** | `DangkihocDAO.getDKcuaSV()` | SV đã đăng kí 1 LHP | `idSVK=1`, `idKihoc=1` | Trả về ArrayList chứa 1 đối tượng Dangkihoc | CheckDB: Kiểm tra query đúng procedure |
-| **TC_DK_02** | `DangkihocDAO.getDKcuaSV()` | Kì học không tồn tại, SV tồn tại | `idSVK=1`, `idKihoc=999` | Trả về danh sách rỗng (size = 0) | |
-| **TC_DK_03** | `DangkihocDAO.luuDKcuaSV()` | ĐK 1 LHP, chưa có ĐK cũ | Đối tượng `Dangkihoc` hợp lệ | Hàm trả về `true`. | **Rollback**: Xóa bản ghi sau khi test |
-| **TC_DK_04** | `DangkihocDAO.luuDKcuaSV()` | ĐK mới trùng hoàn toàn với ĐK cũ | Đối tượng `Dangkihoc` đã tồn tại | Hàm trả về `false` hoặc xử lý báo lỗi | |
+### 5. Chạy tuần tự lúc đầu
+- Integration test chạy với `--runInBand` để giảm race condition.
+- Khi suite ổn định mới cân nhắc tối ưu song song.
 
----
+## Khi nào dùng unit vs integration
 
-### 3. Đường dẫn dự án (Project Link)
-*   **GitHub URL:** [Link repository chứa Unit Test Scripts].
+### Giữ ở unit test
+- `groupPermissions.test.js`
+- `validationHelper.test.js`
+- `dateHelper.test.js`
+- Các test `rewire` cho private helpers thuần
+- Logic cần mock để bắn nhiều nhánh nhanh và độc lập DB
 
----
+### Đưa vào integration test
+- Service có ghi DB thật
+- Logic cần xác minh dữ liệu sau khi save/update
+- Luồng cần chứng minh “rollback” theo nghĩa cleanup marker
+- Luồng có side effect persistence như:
+  - resolve `folderId`
+  - persist `assignedTo`
+  - auto-grant `memberAccess`
+  - update `lastEdited`
+  - toggle `isBookmarked`
 
-### 4. Báo cáo thực thi và Độ bao phủ (Execution & Coverage Report)
+## Mẫu skeleton
+```js
+const mongoose = require('mongoose');
+const path = require('path');
+const Note = require(path.resolve(__dirname, '../../../backend/src/models/Note.model'));
+const User = require(path.resolve(__dirname, '../../../backend/src/models/User.model'));
 
-#### 4.1. Kết quả thực thi (Execution Report)
-*   **Tóm tắt:**
-    *   Tổng số Test Cases: [Số lượng]
-    *   Pass: [Số lượng] | Fail: [Số lượng]
-*   **Bằng chứng (Screenshots):**
-    *   *(Chèn ảnh màn hình kết quả chạy từ IDE thể hiện trạng thái xanh/đỏ của các test case).*
+const TEST_RUN_ID = `__it_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-#### 4.2. Độ bao phủ mã nguồn (Code Coverage Report)
-*   **Tóm tắt:** Độ bao phủ đạt mức phủ cấp 2 (Branch Coverage).
-    *   Line Coverage: [%]
-    *   Branch Coverage: [%]
-*   **Bằng chứng (Screenshots):**
-    *   *(Chèn ảnh màn hình từ công cụ đo độ bao phủ như Coverage.py hoặc JaCoCo).*
+const connectTestDb = async () => {
+  const uri = process.env.MONGODB_URI_TEST || 'mongodb://127.0.0.1:27017/todolist_test';
+  await mongoose.connect(uri);
+};
 
----
+const cleanupByRunId = async () => {
+  await Promise.all([
+    Note.deleteMany({ title: { $regex: TEST_RUN_ID } }),
+    User.deleteMany({ email: { $regex: TEST_RUN_ID } })
+  ]);
+};
 
-### 5. Yêu cầu kỹ thuật đối với Test Scripts (Script Requirements)
-*Phần này xác nhận các script đã viết tuân thủ đúng quy tắc:*
+beforeAll(async () => {
+  await connectTestDb();
+});
 
-1.  **Chú thích (Commenting):** Mọi script đều có comment xác định **Test Case ID** tương ứng.
-2.  **Naming Convention:** Tên hàm/biến rõ ràng, mô tả đúng mục đích kiểm thử.
-3.  **CheckDB:** Với các hàm có thay đổi DB (như `luuDKcuaSV`), script đã thực hiện truy vấn lại DB để xác nhận dữ liệu đã được ghi/sửa đúng.
-4.  **Rollback:** Đã thiết lập các phương thức (ví dụ `@After` trong JUnit) để đưa DB về trạng thái ban đầu sau mỗi ca kiểm thử nhằm tránh lỗi cho các lần test sau.
+afterEach(async () => {
+  await cleanupByRunId();
+});
 
----
+afterAll(async () => {
+  await cleanupByRunId();
+  await mongoose.disconnect();
+});
+```
 
-### 6. Tham chiếu và Prompts (References + Prompts)
-*   **Tài liệu tham khảo:** [Tên các tài liệu, ví dụ: UNIT_TEST.pdf].
-*   **Danh sách Prompts đã sử dụng:** [Liệt kê các câu lệnh đã dùng với AI].
+## Cách chạy
 
----
+### Backend unit
+```bash
+cd unit-test/backend
+npm run test:unit
+```
 
-**Lưu ý khi thực hiện:**
-*   Khi xây dựng **Expected Output**, bạn cần căn cứ vào thiết kế và đặc tả, không căn cứ vào code hiện tại để đảm bảo tính khách quan.
-*   Cần đảm bảo chuẩn bị môi trường (kết nối DB, dữ liệu mẫu) trước khi chạy.
+### Backend integration
+```bash
+cd unit-test/backend
+set MONGODB_URI_TEST=mongodb://127.0.0.1:27017/todolist_test
+npm run test:int
+```
+
+### Chạy cả hai lớp
+```bash
+cd unit-test/backend
+npm run test:all
+```
+
+## Kỳ vọng với báo cáo
+- Báo cáo phải tách rõ `unit` và `integration`.
+- Với integration, phần “CheckDB” nghĩa là truy vấn lại MongoDB thật.
+- Với integration, “Rollback” nghĩa là cleanup tagged data sau mỗi test và dọn lại ở `afterAll`.

@@ -37,30 +37,30 @@
 
 ### UI TEST
 
-| ID | Test Case | Pre-condition | Steps | Test Data | Expected Result | Actual Result | Result | Note |
-|----|-----------|---------------|-------|-----------|-----------------|---------------|--------|------|
-| TC_NOTE_FAVORITE_01 | Icon yêu thích hiển thị trên ghi chú | Đăng nhập `user@test.com`; mở danh sách hoặc chi tiết ghi chú | 1. Quan sát giao diện ghi chú | — | Icon/nút yêu thích (hình ngôi sao hoặc tương đương) hiển thị trên mỗi ghi chú | | | |
-| TC_NOTE_FAVORITE_02 | Biểu tượng thay đổi sau khi đánh dấu yêu thích | Đăng nhập `user@test.com`; ghi chú `"Ghi chú A"` chưa được yêu thích | 1. Nhấn icon yêu thích trên `"Ghi chú A"`<br>2. Quan sát biểu tượng | — | Biểu tượng chuyển sang trạng thái "đã yêu thích" (ví dụ: ngôi sao đặc) | | | |
-| TC_NOTE_FAVORITE_03 | Biểu tượng trở về trạng thái ban đầu sau khi gỡ yêu thích | Đăng nhập `user@test.com`; ghi chú `"Ghi chú A"` đang được yêu thích | 1. Nhấn lại icon yêu thích trên `"Ghi chú A"`<br>2. Quan sát biểu tượng | — | Biểu tượng trở về trạng thái "chưa yêu thích" (ví dụ: ngôi sao rỗng) | | | |
+| ID | Test Case | Test Objective | Pre-condition | Steps | Test Data | Expected Result | Actual Result | Result | Note |
+|----|-----------|----------------|---------------|-------|-----------|-----------------|---------------|--------|------|
+| TC_NOTE_FAVORITE_01 | Icon yêu thích hiển thị trên ghi chú | Xác minh giao diện có cung cấp điều khiển để người dùng thao tác trạng thái yêu thích trên từng ghi chú. | Đăng nhập `user@test.com`; mở danh sách hoặc chi tiết ghi chú | 1. Quan sát giao diện ghi chú | — | Icon/nút yêu thích (hình ngôi sao hoặc tương đương) hiển thị trên mỗi ghi chú | | | |
+| TC_NOTE_FAVORITE_02 | Biểu tượng thay đổi sau khi đánh dấu yêu thích | Xác minh giao diện phản ánh ngay trạng thái đã yêu thích sau khi người dùng bật yêu thích cho ghi chú. | Đăng nhập `user@test.com`; ghi chú `"Ghi chú A"` chưa được yêu thích | 1. Nhấn icon yêu thích trên `"Ghi chú A"`<br>2. Quan sát biểu tượng | — | Biểu tượng chuyển sang trạng thái "đã yêu thích" (ví dụ: ngôi sao đặc) | | | |
+| TC_NOTE_FAVORITE_03 | Biểu tượng trở về trạng thái ban đầu sau khi gỡ yêu thích | Xác minh giao diện phản ánh đúng việc gỡ trạng thái yêu thích khi người dùng nhấn toggle lần nữa. | Đăng nhập `user@test.com`; ghi chú `"Ghi chú A"` đang được yêu thích | 1. Nhấn lại icon yêu thích trên `"Ghi chú A"`<br>2. Quan sát biểu tượng | — | Biểu tượng trở về trạng thái "chưa yêu thích" (ví dụ: ngôi sao rỗng) | | | |
 
 ---
 
 ### FUNCTION TEST
 
-| ID | Test Case | Pre-condition | Steps | Test Data | Expected Result | Actual Result | Result | Note |
-|----|-----------|---------------|-------|-----------|-----------------|---------------|--------|------|
-| TC_NOTE_FAVORITE_04 | Đánh dấu yêu thích ghi chú — FR-NOTE-6.1 | Đăng nhập `user@test.com`; ghi chú `"Ghi chú A"` chưa yêu thích | 1. Nhấn icon yêu thích trên `"Ghi chú A"` | — | Ghi chú `"Ghi chú A"` được đánh dấu là yêu thích; trạng thái cập nhật ngay lập tức | | | |
-| TC_NOTE_FAVORITE_05 | Gỡ dấu yêu thích ghi chú (toggle) — FR-NOTE-6.1 | Đăng nhập `user@test.com`; ghi chú `"Ghi chú A"` đang yêu thích | 1. Nhấn lại icon yêu thích trên `"Ghi chú A"` | — | Dấu yêu thích bị gỡ; biểu tượng quay lại trạng thái chưa yêu thích | | | |
-| TC_NOTE_FAVORITE_06 | Đánh dấu một ghi chú không ảnh hưởng ghi chú khác | Đăng nhập `user@test.com`; `"Ghi chú A"` và `"Ghi chú B"` đều chưa yêu thích | 1. Nhấn yêu thích `"Ghi chú A"`<br>2. Kiểm tra trạng thái `"Ghi chú B"` | — | `"Ghi chú A"` được đánh dấu yêu thích; `"Ghi chú B"` không bị thay đổi trạng thái | | | |
+| ID | Test Case | Test Objective | Pre-condition | Steps | Test Data | Expected Result | Actual Result | Result | Note |
+|----|-----------|----------------|---------------|-------|-----------|-----------------|---------------|--------|------|
+| TC_NOTE_FAVORITE_04 | Đánh dấu yêu thích ghi chú — FR-NOTE-6.1 | Xác minh người dùng có thể đánh dấu ghi chú là yêu thích theo `FR-NOTE-6.1`. | Đăng nhập `user@test.com`; ghi chú `"Ghi chú A"` chưa yêu thích | 1. Nhấn icon yêu thích trên `"Ghi chú A"` | — | Ghi chú `"Ghi chú A"` được đánh dấu là yêu thích; trạng thái cập nhật ngay lập tức | | | |
+| TC_NOTE_FAVORITE_05 | Gỡ dấu yêu thích ghi chú (toggle) — FR-NOTE-6.1 | Xác minh người dùng có thể gỡ trạng thái yêu thích của cùng một ghi chú bằng cơ chế toggle theo `FR-NOTE-6.1`. | Đăng nhập `user@test.com`; ghi chú `"Ghi chú A"` đang yêu thích | 1. Nhấn lại icon yêu thích trên `"Ghi chú A"` | — | Dấu yêu thích bị gỡ; biểu tượng quay lại trạng thái chưa yêu thích | | | |
+| TC_NOTE_FAVORITE_06 | Đánh dấu một ghi chú không ảnh hưởng ghi chú khác | Xác minh thao tác yêu thích chỉ áp dụng cho đúng ghi chú được chọn và không làm thay đổi trạng thái của ghi chú khác. | Đăng nhập `user@test.com`; `"Ghi chú A"` và `"Ghi chú B"` đều chưa yêu thích | 1. Nhấn yêu thích `"Ghi chú A"`<br>2. Kiểm tra trạng thái `"Ghi chú B"` | — | `"Ghi chú A"` được đánh dấu yêu thích; `"Ghi chú B"` không bị thay đổi trạng thái | | | |
 
 ---
 
 ### BUSINESS FLOW
 
-| ID | Test Case | Pre-condition | Steps | Test Data | Expected Result | Actual Result | Result | Note |
-|----|-----------|---------------|-------|-----------|-----------------|---------------|--------|------|
-| TC_NOTE_FAVORITE_07 | Trạng thái yêu thích được lưu sau reload | Đăng nhập `user@test.com`; vừa đánh dấu yêu thích `"Ghi chú A"` | 1. Tải lại trang (F5)<br>2. Mở mục Ghi chú | — | Ghi chú `"Ghi chú A"` vẫn hiển thị trạng thái yêu thích sau khi reload | | | |
-| TC_NOTE_FAVORITE_08 | Luồng toggle yêu thích nhiều lần — trạng thái cuối đúng | Đăng nhập `user@test.com`; `"Ghi chú A"` chưa yêu thích | 1. Nhấn yêu thích (→ bật)<br>2. Nhấn lại (→ tắt)<br>3. Nhấn lại (→ bật)<br>4. Tải lại trang | — | Trạng thái sau cùng là "đã yêu thích"; lưu đúng vào DB | | | |
+| ID | Test Case | Test Objective | Pre-condition | Steps | Test Data | Expected Result | Actual Result | Result | Note |
+|----|-----------|----------------|---------------|-------|-----------|-----------------|---------------|--------|------|
+| TC_NOTE_FAVORITE_07 | Trạng thái yêu thích được lưu sau reload | Xác minh trạng thái yêu thích được lưu bền vững và vẫn hiển thị chính xác sau khi tải lại trang. | Đăng nhập `user@test.com`; vừa đánh dấu yêu thích `"Ghi chú A"` | 1. Tải lại trang (F5)<br>2. Mở mục Ghi chú | — | Ghi chú `"Ghi chú A"` vẫn hiển thị trạng thái yêu thích sau khi reload | | | |
+| TC_NOTE_FAVORITE_08 | Luồng toggle yêu thích nhiều lần — trạng thái cuối đúng | Xác minh hệ thống lưu đúng trạng thái cuối cùng sau nhiều lần bật/tắt yêu thích liên tiếp trên cùng một ghi chú. | Đăng nhập `user@test.com`; `"Ghi chú A"` chưa yêu thích | 1. Nhấn yêu thích (→ bật)<br>2. Nhấn lại (→ tắt)<br>3. Nhấn lại (→ bật)<br>4. Tải lại trang | — | Trạng thái sau cùng là "đã yêu thích"; lưu đúng vào DB | | | |
 
 ---
 

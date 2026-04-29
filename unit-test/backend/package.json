@@ -4,10 +4,15 @@
   "description": "Unit tests for Todo List App — backend (Node.js)",
   "private": true,
   "scripts": {
-    "test": "jest --config jest.config.js --runInBand",
+    "test": "npm run test:unit",
+    "test:unit": "jest --config jest.config.js --runInBand",
     "test:watch": "jest --config jest.config.js --watch",
     "test:coverage": "jest --config jest.config.js --coverage",
-    "test:verbose": "jest --config jest.config.js --verbose"
+    "test:verbose": "jest --config jest.config.js --verbose",
+    "test:int": "jest --config jest.integration.config.js --runInBand",
+    "test:int:coverage": "jest --config jest.integration.config.js --runInBand --coverage",
+    "test:coverage:all": "jest --config jest.coverage-all.config.js --runInBand --coverage",
+    "test:all": "npm run test:unit && npm run test:int"
   },
   "devDependencies": {
     "jest": "^29.7.0",

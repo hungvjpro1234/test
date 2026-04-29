@@ -37,30 +37,30 @@
 
 ### UI TEST
 
-| ID | Test Case | Pre-condition | Steps | Test Data | Expected Result | Actual Result | Result | Note |
-|----|-----------|---------------|-------|-----------|-----------------|---------------|--------|------|
-| TC_NOTE_TAG_01 | Danh sách nhãn hiển thị đầy đủ trên ghi chú | Đăng nhập `user@test.com`; mở chi tiết ghi chú có nhãn `"Công việc"` và `"Học tập"` | 1. Quan sát phần nhãn trong chi tiết ghi chú | — | Cả 2 nhãn `"Công việc"` và `"Học tập"` hiển thị rõ ràng | | | |
-| TC_NOTE_TAG_02 | Nút xóa nhãn hiển thị trên từng nhãn | Đăng nhập `user@test.com`; mở chi tiết ghi chú có nhãn | 1. Hover hoặc nhìn vào khu vực nhãn | — | Mỗi nhãn có icon "×" hoặc nút xóa hiển thị | | | |
+| ID | Test Case | Test Objective | Pre-condition | Steps | Test Data | Expected Result | Actual Result | Result | Note |
+|----|-----------|----------------|---------------|-------|-----------|-----------------|---------------|--------|------|
+| TC_NOTE_TAG_01 | Danh sách nhãn hiển thị đầy đủ trên ghi chú | Xác minh giao diện hiển thị đầy đủ các nhãn đang được gắn trên ghi chú. | Đăng nhập `user@test.com`; mở chi tiết ghi chú có nhãn `"Công việc"` và `"Học tập"` | 1. Quan sát phần nhãn trong chi tiết ghi chú | — | Cả 2 nhãn `"Công việc"` và `"Học tập"` hiển thị rõ ràng | | | |
+| TC_NOTE_TAG_02 | Nút xóa nhãn hiển thị trên từng nhãn | Xác minh người dùng có thể nhận biết và thao tác chức năng gỡ nhãn trên từng nhãn hiển thị. | Đăng nhập `user@test.com`; mở chi tiết ghi chú có nhãn | 1. Hover hoặc nhìn vào khu vực nhãn | — | Mỗi nhãn có icon "×" hoặc nút xóa hiển thị | | | |
 
 ---
 
 ### FUNCTION TEST
 
-| ID | Test Case | Pre-condition | Steps | Test Data | Expected Result | Actual Result | Result | Note |
-|----|-----------|---------------|-------|-----------|-----------------|---------------|--------|------|
-| TC_NOTE_TAG_03 | Xóa một nhãn khỏi ghi chú — FR-NOTE-8.1 | Đăng nhập `user@test.com`; ghi chú có nhãn `"Công việc"` và `"Học tập"` | 1. Nhấn "×" trên nhãn `"Công việc"` | — | Nhãn `"Công việc"` biến mất khỏi ghi chú; danh sách nhãn chỉ còn `"Học tập"` | | | |
-| TC_NOTE_TAG_04 | Xóa nhãn A không ảnh hưởng nhãn B | Đăng nhập `user@test.com`; ghi chú có nhãn `"Công việc"` và `"Học tập"` | 1. Xóa nhãn `"Công việc"`<br>2. Kiểm tra nhãn `"Học tập"` | — | Nhãn `"Học tập"` vẫn còn trên ghi chú; không bị ảnh hưởng | | | |
-| TC_NOTE_TAG_05 | Xóa tất cả nhãn — danh sách nhãn trống, không báo lỗi | Đăng nhập `user@test.com`; ghi chú chỉ còn 1 nhãn `"Học tập"` | 1. Xóa nhãn `"Học tập"` | — | Danh sách nhãn trống; ghi chú vẫn hiển thị bình thường, không có lỗi | | | |
-| TC_NOTE_TAG_06 | Cố xóa nhãn trên ghi chú của người khác qua API — C-5 | Đăng nhập `user@test.com`; `user2@test.com` có ghi chú `id=202` với nhãn `"Quan trọng"` | 1. Gửi request API xóa nhãn `"Quan trọng"` khỏi ghi chú `id=202` với tài khoản `user@test.com` | — | Hệ thống trả về thông báo không có quyền; nhãn `"Quan trọng"` vẫn còn trên ghi chú `id=202` | | | |
+| ID | Test Case | Test Objective | Pre-condition | Steps | Test Data | Expected Result | Actual Result | Result | Note |
+|----|-----------|----------------|---------------|-------|-----------|-----------------|---------------|--------|------|
+| TC_NOTE_TAG_03 | Xóa một nhãn khỏi ghi chú — FR-NOTE-8.1 | Xác minh người dùng có thể gỡ một nhãn cụ thể khỏi ghi chú của mình theo `FR-NOTE-8.1`. | Đăng nhập `user@test.com`; ghi chú có nhãn `"Công việc"` và `"Học tập"` | 1. Nhấn "×" trên nhãn `"Công việc"` | — | Nhãn `"Công việc"` biến mất khỏi ghi chú; danh sách nhãn chỉ còn `"Học tập"` | | | |
+| TC_NOTE_TAG_04 | Xóa nhãn A không ảnh hưởng nhãn B | Xác minh việc gỡ một nhãn chỉ tác động đến nhãn được chọn và không làm mất các nhãn còn lại trên cùng ghi chú. | Đăng nhập `user@test.com`; ghi chú có nhãn `"Công việc"` và `"Học tập"` | 1. Xóa nhãn `"Công việc"`<br>2. Kiểm tra nhãn `"Học tập"` | — | Nhãn `"Học tập"` vẫn còn trên ghi chú; không bị ảnh hưởng | | | |
+| TC_NOTE_TAG_05 | Xóa tất cả nhãn — danh sách nhãn trống, không báo lỗi | Xác minh hệ thống xử lý đúng khi ghi chú không còn nhãn nào sau khi người dùng gỡ nhãn cuối cùng. | Đăng nhập `user@test.com`; ghi chú chỉ còn 1 nhãn `"Học tập"` | 1. Xóa nhãn `"Học tập"` | — | Danh sách nhãn trống; ghi chú vẫn hiển thị bình thường, không có lỗi | | | |
+| TC_NOTE_TAG_06 | Cố xóa nhãn trên ghi chú của người khác qua API — C-5 | Xác minh hệ thống ngăn người dùng gỡ nhãn khỏi ghi chú không thuộc quyền sở hữu. | Đăng nhập `user@test.com`; `user2@test.com` có ghi chú `id=202` với nhãn `"Quan trọng"` | 1. Gửi request API xóa nhãn `"Quan trọng"` khỏi ghi chú `id=202` với tài khoản `user@test.com` | — | Hệ thống trả về thông báo không có quyền; nhãn `"Quan trọng"` vẫn còn trên ghi chú `id=202` | | | |
 
 ---
 
 ### BUSINESS FLOW
 
-| ID | Test Case | Pre-condition | Steps | Test Data | Expected Result | Actual Result | Result | Note |
-|----|-----------|---------------|-------|-----------|-----------------|---------------|--------|------|
-| TC_NOTE_TAG_07 | Xóa nhãn được lưu vào DB — reload không khôi phục nhãn | Đăng nhập `user@test.com`; vừa xóa nhãn `"Công việc"` khỏi ghi chú | 1. Tải lại trang (F5)<br>2. Mở chi tiết ghi chú | — | Nhãn `"Công việc"` không xuất hiện lại sau khi reload | | | |
-| TC_NOTE_TAG_08 | Luồng xóa nhãn và kiểm tra danh sách nhãn tổng | Đăng nhập `user@test.com`; ghi chú có 2 nhãn; cần kiểm tra nhãn tổng của hệ thống (nếu có) | 1. Xóa nhãn `"Công việc"` khỏi ghi chú<br>2. Kiểm tra danh sách nhãn trên ghi chú | — | Chỉ nhãn `"Công việc"` bị gỡ ra khỏi ghi chú này; nếu hệ thống có kho nhãn chung thì nhãn `"Công việc"` vẫn tồn tại trong kho | | | |
+| ID | Test Case | Test Objective | Pre-condition | Steps | Test Data | Expected Result | Actual Result | Result | Note |
+|----|-----------|----------------|---------------|-------|-----------|-----------------|---------------|--------|------|
+| TC_NOTE_TAG_07 | Xóa nhãn được lưu vào DB — reload không khôi phục nhãn | Xác minh thay đổi về nhãn được lưu bền vững và không bị khôi phục sau khi tải lại trang. | Đăng nhập `user@test.com`; vừa xóa nhãn `"Công việc"` khỏi ghi chú | 1. Tải lại trang (F5)<br>2. Mở chi tiết ghi chú | — | Nhãn `"Công việc"` không xuất hiện lại sau khi reload | | | |
+| TC_NOTE_TAG_08 | Luồng xóa nhãn và kiểm tra danh sách nhãn tổng | Xác minh thao tác gỡ nhãn chỉ loại bỏ liên kết nhãn khỏi ghi chú hiện tại và không gây ảnh hưởng ngoài phạm vi mong đợi. | Đăng nhập `user@test.com`; ghi chú có 2 nhãn; cần kiểm tra nhãn tổng của hệ thống (nếu có) | 1. Xóa nhãn `"Công việc"` khỏi ghi chú<br>2. Kiểm tra danh sách nhãn trên ghi chú | — | Chỉ nhãn `"Công việc"` bị gỡ ra khỏi ghi chú này; nếu hệ thống có kho nhãn chung thì nhãn `"Công việc"` vẫn tồn tại trong kho | | | |
 
 ---
 
