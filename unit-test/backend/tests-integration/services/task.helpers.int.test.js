@@ -132,7 +132,7 @@ describe('Integration - task.helpers -> task.service.js', () => {
 
   describe('folder access side effects', () => {
     // IT_TASK_FOLDER_ACCESS_01
-    test('PM assigning task into non-default folder auto-grants folder access to assignee', async () => {
+    test('Khi PM giao task trong một folder riêng cho một người chưa có quyền vào folder đó, hệ thống sẽ tự mở quyền folder cho người đó.', async () => {
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_folder_pm',
@@ -156,6 +156,7 @@ describe('Integration - task.helpers -> task.service.js', () => {
         group,
         creator,
         namePrefix: 'task_folder_target',
+        // Ban đầu, assignee chưa có quyen truy cap folder
         memberAccessUserIds: []
       });
       const title = buildTaggedValue('task_folder_auto_access', TEST_RUN_ID);
@@ -180,7 +181,7 @@ describe('Integration - task.helpers -> task.service.js', () => {
     });
 
     // IT_TASK_FOLDER_ACCESS_02
-    test('falls back to default folder when folderId is omitted and persists the resolved folderId', async () => {
+    test('dù lúc gọi hàm không truyền folderId, kết quả cuối cùng task vẫn có folderId, và giá trị đó chính là folder mặc định của group.', async () => {
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_default_folder_pm',
@@ -208,6 +209,7 @@ describe('Integration - task.helpers -> task.service.js', () => {
       });
       const title = buildTaggedValue('task_default_folder_fallback', TEST_RUN_ID);
 
+      // Gọi hàm ko truyền folderId, sử dụng default folder
       const created = await taskService.createTask({
         title,
         description: 'default folder fallback',
@@ -226,7 +228,7 @@ describe('Integration - task.helpers -> task.service.js', () => {
 
   describe('getAllTasks folder-scoped behavior', () => {
     // IT_TASK_HELPER_MAP_01
-    test('requester assigned to default folder sees default-folder tasks plus tasks without folderId', async () => {
+    test('Người có quyền ở folder mặc định, khi xem task của group, sẽ thấy cả task ở folder mặc định lẫn task không có folder.', async () => {
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_map_default_creator',
@@ -242,6 +244,7 @@ describe('Integration - task.helpers -> task.service.js', () => {
       const group = await createGroup({
         testRunId: TEST_RUN_ID,
         creator,
+        // requester có quyền truy cập group
         memberIds: [requester._id],
         namePrefix: 'task_map_default_group'
       });
@@ -249,6 +252,7 @@ describe('Integration - task.helpers -> task.service.js', () => {
         testRunId: TEST_RUN_ID,
         group,
         creator,
+        // requester có quyền truy cập folder mặc định
         namePrefix: 'task_map_default_folder',
         isDefault: true,
         memberAccessUserIds: [requester._id]
@@ -259,6 +263,7 @@ describe('Integration - task.helpers -> task.service.js', () => {
         creator,
         namePrefix: 'task_map_default_other'
       });
+      // task ở folder mặc định
       const defaultTask = await createTaskDoc({
         testRunId: TEST_RUN_ID,
         creator,
@@ -266,6 +271,7 @@ describe('Integration - task.helpers -> task.service.js', () => {
         folder: defaultFolder,
         titlePrefix: 'task_map_default_visible'
       });
+      // task ở folder null
       const nullFolderTask = await createTaskDoc({
         testRunId: TEST_RUN_ID,
         creator,
@@ -296,7 +302,7 @@ describe('Integration - task.helpers -> task.service.js', () => {
     });
 
     // IT_TASK_HELPER_MAP_02
-    test('requester filtering by a specific non-default folder sees only tasks in that folder', async () => {
+    test('Khi người dùng yêu cầu xem task của một folder riêng, thì chỉ những task thuộc đúng folder đó mới được trả về.', async () => {
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_map_specific_creator',
@@ -320,6 +326,7 @@ describe('Integration - task.helpers -> task.service.js', () => {
         group,
         creator,
         namePrefix: 'task_map_specific_target',
+        // requester có quyền truy cập folder target
         memberAccessUserIds: [requester._id]
       });
       const otherFolder = await createFolder({
@@ -327,6 +334,7 @@ describe('Integration - task.helpers -> task.service.js', () => {
         group,
         creator,
         namePrefix: 'task_map_specific_other',
+        // requester khó quyền truy cập folder other
         memberAccessUserIds: [requester._id]
       });
       const targetTask = await createTaskDoc({
@@ -344,6 +352,7 @@ describe('Integration - task.helpers -> task.service.js', () => {
         titlePrefix: 'task_map_specific_hidden'
       });
 
+      // Lọc task theo targetfolder
       const result = await taskService.getAllTasks(
         { groupId: group._id, folderId: targetFolder._id },
         { sortBy: 'createdAt', order: 'asc', page: 1, limit: 50 },
@@ -353,11 +362,12 @@ describe('Integration - task.helpers -> task.service.js', () => {
       expect(result.tasks).toHaveLength(1);
       expect(String(result.tasks[0]._id)).toBe(String(targetTask._id));
       expect(String(result.tasks[0].folderId)).toBe(String(targetFolder._id));
+      // số task phù hợp với bộ lọc
       expect(result.pagination.total).toBe(1);
     });
 
     // IT_TASK_HELPER_MAP_03
-    test('folder-scoped requester with memberAccess sees tasks in the assigned non-default folder on group view', async () => {
+    test('Nếu người dùng chỉ có quyền trong một folder thường, thì khi mở danh sách task của cả group, họ chỉ nhìn thấy task trong chính folder đó thôi.', async () => {
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_map_assigned_creator',
@@ -373,9 +383,11 @@ describe('Integration - task.helpers -> task.service.js', () => {
       const group = await createGroup({
         testRunId: TEST_RUN_ID,
         creator,
+        // requester có quyền truy cập group
         memberIds: [requester._id],
         namePrefix: 'task_map_assigned_group'
       });
+      // folder mà requester có quyền truy cập (1 task)
       const assignedFolder = await createFolder({
         testRunId: TEST_RUN_ID,
         group,
@@ -383,6 +395,7 @@ describe('Integration - task.helpers -> task.service.js', () => {
         namePrefix: 'task_map_assigned_folder',
         memberAccessUserIds: [requester._id]
       });
+      // folder mà requester ko có quyền truy cập (1 task)
       const unassignedFolder = await createFolder({
         testRunId: TEST_RUN_ID,
         group,
@@ -416,7 +429,7 @@ describe('Integration - task.helpers -> task.service.js', () => {
     });
 
     // IT_TASK_HELPER_MAP_04
-    test('folder-scoped requester without any folder assignment gets zero tasks for group view', async () => {
+    test('Nếu người dùng thuộc kiểu phải được gán folder mới xem được task, nhưng hiện tại chưa được gán folder nào, thì khi xem task của group sẽ không thấy gì cả.', async () => {
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_map_none_creator',
@@ -435,6 +448,7 @@ describe('Integration - task.helpers -> task.service.js', () => {
         memberIds: [requester._id],
         namePrefix: 'task_map_none_group'
       });
+      // requester ko có quyền truy cập folder
       const folder = await createFolder({
         testRunId: TEST_RUN_ID,
         group,

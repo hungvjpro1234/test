@@ -78,7 +78,8 @@ afterAll(async () => {
 describe('Integration - task.assignment -> task.service.js', () => {
   describe('assignment guardrails', () => {
     // IT_TASK_ASSIGNMENT_01
-    test('rejects assignee outside the group and leaves DB clean for that task title', async () => {
+    test('Kiểm tra rằng dù người tạo là PM, hệ thống vẫn không cho gán task cho một người không thuộc group.', async () => {
+      // PM : Tạo group
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_pm_owner',
@@ -100,28 +101,33 @@ describe('Integration - task.assignment -> task.service.js', () => {
       const group = await createGroup({
         testRunId: TEST_RUN_ID,
         creator,
+        // Group không có tv là outsider
         memberIds: [inGroupUser._id],
         namePrefix: 'task_assignment_group'
       });
 
       const title = buildTaggedValue('task_outside_group', TEST_RUN_ID);
 
+      // expected : bị từ chối
       await expect(
         taskService.createTask({
           title,
           description: 'should fail',
           createdBy: creator._id,
           groupId: group._id,
+          // vì giao việc cho người không thuộc group
           assignedTo: [{ userId: outsider._id }]
         })
       ).rejects.toThrow('One or more users are not members of this group');
 
       const persisted = await Task.find({ title }).lean();
+      // DB không lưu task
       expect(persisted).toHaveLength(0);
     });
 
     // IT_TASK_ASSIGNMENT_02
-    test('rejects non-privileged creator assigning another user and does not persist task', async () => {
+    test('Kiểm tra một Developer bình thường không được tạo task và gán task đó cho teammate khác.', async () => {
+      // Developer : Tạo group
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_dev_creator',
@@ -136,12 +142,14 @@ describe('Integration - task.assignment -> task.service.js', () => {
       });
       const group = await createGroup({
         testRunId: TEST_RUN_ID,
+        // Group được khởi tạo : dev là người tạo
         creator,
         memberIds: [teammate._id],
         namePrefix: 'task_assignment_dev_group'
       });
       const title = buildTaggedValue('task_forbidden_assign', TEST_RUN_ID);
 
+      // expected : thông báo chỉ có thể gán task cho chính mình
       await expect(
         taskService.createTask({
           title,
@@ -157,13 +165,15 @@ describe('Integration - task.assignment -> task.service.js', () => {
     });
 
     // IT_TASK_ASSIGNMENT_03
-    test('rejects PM non-lead assigning another PM non-lead and does not persist task', async () => {
+    test('Kiểm tra PM không có quyền lead không được gán task cho một PM khác cũng không phải lead.', async () => {
+      // PM : ko có isLeader
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_pm_non_lead_creator',
         namePrefix: 'Task PM Non Lead Creator',
         role: GROUP_ROLE_KEYS.PM
       });
+      // PM : ko có isLeader
       const targetPm = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_pm_non_lead_target',
@@ -182,10 +192,13 @@ describe('Integration - task.assignment -> task.service.js', () => {
         taskService.createTask({
           title,
           description: 'pm non-lead cannot assign pm non-lead',
+          // PM tạo task
           createdBy: creator._id,
           groupId: group._id,
+          // assign cho pm khác
           assignedTo: [{ userId: targetPm._id }]
         })
+        // fail
       ).rejects.toThrow('PM, PO');
 
       const persisted = await Task.find({ title }).lean();
@@ -193,7 +206,8 @@ describe('Integration - task.assignment -> task.service.js', () => {
     });
 
     // IT_TASK_ASSIGNMENT_04
-    test('allows PM lead assigning PM/PO/leader targets and persists all valid assignees', async () => {
+    test('Kiểm tra PM có thuộc tính lead được quyền assign rộng: PM, PO lead, Developer lead.', async () => {
+      // PM : tạo group && isLeader
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_pm_lead_creator',
@@ -207,6 +221,7 @@ describe('Integration - task.assignment -> task.service.js', () => {
         namePrefix: 'Task PM Lead Target PM',
         role: GROUP_ROLE_KEYS.PM
       });
+      // PO : isLeader
       const poLeadTarget = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_pm_lead_target_po',
@@ -214,6 +229,7 @@ describe('Integration - task.assignment -> task.service.js', () => {
         role: GROUP_ROLE_KEYS.PRODUCT_OWNER,
         isLeader: true
       });
+      // Developer : isLeader
       const devLeadTarget = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_pm_lead_target_dev',
@@ -224,6 +240,7 @@ describe('Integration - task.assignment -> task.service.js', () => {
       const group = await createGroup({
         testRunId: TEST_RUN_ID,
         creator,
+        // Group full thành viên
         memberIds: [pmTarget._id, poLeadTarget._id, devLeadTarget._id],
         namePrefix: 'task_pm_lead_group'
       });
@@ -232,10 +249,12 @@ describe('Integration - task.assignment -> task.service.js', () => {
         group,
         creator,
         namePrefix: 'task_pm_lead_folder',
+        // Folder trong group ban đầu rỗng
         memberAccessUserIds: []
       });
       const title = buildTaggedValue('task_pm_lead_broad_assign', TEST_RUN_ID);
 
+      // Tạo task trong folder rỗng và assign cho tất cả các thành viên ở trên
       const created = await taskService.createTask({
         title,
         description: 'pm lead can assign broad set',
@@ -254,12 +273,15 @@ describe('Integration - task.assignment -> task.service.js', () => {
       const assignedIds = taskFromDb.assignedTo.map(item => String(item.userId)).sort();
       const folderAccessIds = folderFromDb.memberAccess.map(item => String(item.userId)).sort();
 
+      // task được tạo
       expect(taskFromDb).toBeTruthy();
+      // các thành viên phải được asigned trong task
       expect(assignedIds).toEqual([
         String(pmTarget._id),
         String(poLeadTarget._id),
         String(devLeadTarget._id)
       ].sort());
+      // các thành viên phải được accessable trong folder
       expect(folderAccessIds).toEqual([
         String(pmTarget._id),
         String(poLeadTarget._id),
@@ -268,7 +290,8 @@ describe('Integration - task.assignment -> task.service.js', () => {
     });
 
     // IT_TASK_ASSIGNMENT_05
-    test('rejects non-PM/PO leader assigning another leader and does not persist task', async () => {
+    test('Kiểm tra một BA lead ( không phải PM/PO ) không được gán task cho một leader khác', async () => {
+      // BA : tạo group && isLeader
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_ba_leader_creator',
@@ -276,6 +299,7 @@ describe('Integration - task.assignment -> task.service.js', () => {
         role: GROUP_ROLE_KEYS.BA,
         isLeader: true
       });
+      // PM : isleader
       const targetLeader = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_ba_leader_target',
@@ -297,8 +321,10 @@ describe('Integration - task.assignment -> task.service.js', () => {
           description: 'leader cannot assign another leader',
           createdBy: creator._id,
           groupId: group._id,
+          // BA lead assign cho leader PM
           assignedTo: [{ userId: targetLeader._id }]
         })
+        // fail
       ).rejects.toThrow('Lead');
 
       const persisted = await Task.find({ title }).lean();
@@ -306,7 +332,8 @@ describe('Integration - task.assignment -> task.service.js', () => {
     });
 
     // IT_TASK_ASSIGNMENT_06
-    test('allows regular creator to self-assign only and persists the task', async () => {
+    test('Kiểm tra Developer bình thường vẫn có quyền tạo task và tự assign chính mình.', async () => {
+      // Developer : tạo group & task
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_dev_self_creator',
@@ -333,11 +360,13 @@ describe('Integration - task.assignment -> task.service.js', () => {
         createdBy: creator._id,
         groupId: group._id,
         folderId: folder._id,
+        // Developer assign chính mình
         assignedTo: [{ userId: creator._id }]
       });
 
       const taskFromDb = await Task.findById(created._id).lean();
 
+      // task được tạo bình thường
       expect(taskFromDb).toBeTruthy();
       expect(taskFromDb.title).toBe(title);
       expect(taskFromDb.assignedTo).toHaveLength(1);
@@ -345,19 +374,22 @@ describe('Integration - task.assignment -> task.service.js', () => {
     });
 
     // IT_TASK_ASSIGNMENT_07
-    test('keeps only valid assignees when PM non-lead mixes allowed and restricted targets', async () => {
+    test('Kiểm tra khi PM non-lead assign cùng lúc Developer hợp lệ và PM bị hạn chế, hệ thống chỉ giữ người hợp lệ thay vì fail toàn bộ.', async () => {
+      // PM : tạo group && non-lead (ko được assign cho PM/PO khác)
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_pm_mixed_creator',
         namePrefix: 'Task PM Mixed Creator',
         role: GROUP_ROLE_KEYS.PM
       });
+      // Developer : thành viên trong group
       const validDeveloper = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_pm_mixed_dev',
         namePrefix: 'Task PM Mixed Dev',
         role: GROUP_ROLE_KEYS.DEVELOPER
       });
+      // PM : PM khác trong group
       const restrictedPm = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_pm_mixed_pm',
@@ -385,6 +417,7 @@ describe('Integration - task.assignment -> task.service.js', () => {
         createdBy: creator._id,
         groupId: group._id,
         folderId: folder._id,
+        // Creator (PM non-lead) assign cho Developer và PM khác
         assignedTo: [
           { userId: validDeveloper._id },
           { userId: restrictedPm._id }
@@ -396,6 +429,7 @@ describe('Integration - task.assignment -> task.service.js', () => {
       const assignedIds = taskFromDb.assignedTo.map(item => String(item.userId));
       const folderAccessIds = folderFromDb.memberAccess.map(item => String(item.userId));
 
+      // Task vẫn được tạo nhưng chỉ assign cho Developer
       expect(taskFromDb).toBeTruthy();
       expect(taskFromDb.title).toBe(title);
       expect(assignedIds).toEqual([String(validDeveloper._id)]);
@@ -405,7 +439,7 @@ describe('Integration - task.assignment -> task.service.js', () => {
     });
 
     // IT_TASK_ASSIGNMENT_08
-    test('allows PM non-lead assigning a BA non-lead and persists the assignee', async () => {
+    test('Kiểm tra PM non-lead được phép gán task cho BA không phải lead.', async () => {
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_pm_ba_creator',
@@ -431,17 +465,19 @@ describe('Integration - task.assignment -> task.service.js', () => {
         description: 'pm non-lead assigns ba',
         createdBy: creator._id,
         groupId: group._id,
+        // Creator (PM non-lead) assign cho BA (non-lead)
         assignedTo: [{ userId: baTarget._id }]
       });
 
       const taskFromDb = await Task.findById(created._id).lean();
+      // task tạo bình thường
       expect(taskFromDb).toBeTruthy();
       expect(taskFromDb.assignedTo).toHaveLength(1);
       expect(String(taskFromDb.assignedTo[0].userId)).toBe(String(baTarget._id));
     });
 
     // IT_TASK_ASSIGNMENT_09
-    test('allows PM non-lead assigning a QA non-lead and persists the assignee', async () => {
+    test('Kiểm tra PM non-lead được phép gán task cho QA thường.', async () => {
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_pm_qa_creator',
@@ -467,6 +503,7 @@ describe('Integration - task.assignment -> task.service.js', () => {
         description: 'pm non-lead assigns qa',
         createdBy: creator._id,
         groupId: group._id,
+        // Creator (PM non-lead) assign cho QA (non-lead)
         assignedTo: [{ userId: qaTarget._id }]
       });
 
@@ -476,13 +513,15 @@ describe('Integration - task.assignment -> task.service.js', () => {
     });
 
     // IT_TASK_ASSIGNMENT_10
-    test('allows PM non-lead assigning a developer leader and persists the assignee', async () => {
+    test('Kiểm tra PM non-lead được phép gán folder cho Developer có thuộc tính lead.', async () => {
+      // PM : tạo group && non-lead
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_pm_devlead_creator',
         namePrefix: 'Task PM DevLead Creator',
         role: GROUP_ROLE_KEYS.PM
       });
+      // Developer : isLeader
       const devLeadTarget = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_pm_devlead_target',
@@ -503,22 +542,26 @@ describe('Integration - task.assignment -> task.service.js', () => {
         description: 'pm non-lead assigns developer leader',
         createdBy: creator._id,
         groupId: group._id,
+        // Creator (PM non-lead) assign cho Developer (lead)
         assignedTo: [{ userId: devLeadTarget._id }]
       });
 
       const taskFromDb = await Task.findById(created._id).lean();
+      // task tạo bình thuong
       expect(taskFromDb).toBeTruthy();
       expect(String(taskFromDb.assignedTo[0].userId)).toBe(String(devLeadTarget._id));
     });
 
     // IT_TASK_ASSIGNMENT_11
-    test('rejects PM non-lead assigning a PO non-lead and does not persist task', async () => {
+    test('Kiểm tra PM non-lead không được assign task cho PO non-lead.', async () => {
+      // PM : tạo group && non-lead
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_pm_po_creator',
         namePrefix: 'Task PM PO Creator',
         role: GROUP_ROLE_KEYS.PM
       });
+      // PO : thành viên, non-lead
       const poTarget = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_pm_po_target',
@@ -539,22 +582,26 @@ describe('Integration - task.assignment -> task.service.js', () => {
           description: 'pm non-lead cannot assign po non-lead',
           createdBy: creator._id,
           groupId: group._id,
+          // Creator (PM non-lead) assign cho PO (non-lead)
           assignedTo: [{ userId: poTarget._id }]
         })
       ).rejects.toThrow('PM, PO');
 
       const persisted = await Task.find({ title }).lean();
+      // fail
       expect(persisted).toHaveLength(0);
     });
 
     // IT_TASK_ASSIGNMENT_12
-    test('rejects PM non-lead assigning a PM lead and does not persist task', async () => {
+    test('Kiểm tra PM thường không được assign cho PM lead.', async () => {
+      // PM : tạo group && non-lead
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_pm_pmlead_creator',
         namePrefix: 'Task PM PMLead Creator',
         role: GROUP_ROLE_KEYS.PM
       });
+      // PM : thành viên && isleader
       const pmLeadTarget = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_pm_pmlead_target',
@@ -576,22 +623,26 @@ describe('Integration - task.assignment -> task.service.js', () => {
           description: 'pm non-lead cannot assign pm lead',
           createdBy: creator._id,
           groupId: group._id,
+          // Creator (PM non-lead) assign cho PM (lead)
           assignedTo: [{ userId: pmLeadTarget._id }]
         })
       ).rejects.toThrow('PM, PO');
 
       const persisted = await Task.find({ title }).lean();
+      //fail
       expect(persisted).toHaveLength(0);
     });
 
     // IT_TASK_ASSIGNMENT_13
-    test('rejects PM non-lead assigning a PO lead and does not persist task', async () => {
+    test('Kiểm tra PM thường không được assign cho PO lead.', async () => {
+      // PM : tạo group && non-lead
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_pm_polead_creator',
         namePrefix: 'Task PM POLead Creator',
         role: GROUP_ROLE_KEYS.PM
       });
+      // PO : thành viên && isleader
       const poLeadTarget = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_pm_polead_target',
@@ -613,22 +664,26 @@ describe('Integration - task.assignment -> task.service.js', () => {
           description: 'pm non-lead cannot assign po lead',
           createdBy: creator._id,
           groupId: group._id,
+          // Creator (PM non-lead) assign cho PO (lead)
           assignedTo: [{ userId: poLeadTarget._id }]
         })
       ).rejects.toThrow('PM, PO');
 
       const persisted = await Task.find({ title }).lean();
+      //fail
       expect(persisted).toHaveLength(0);
     });
 
     // IT_TASK_ASSIGNMENT_14
-    test('allows PO non-lead assigning a developer and persists the assignee', async () => {
+    test('Kiểm tra PO non-lead có quyền assign task cho Developer.', async () => {
+      // PO : tạo group && non-lead
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_po_dev_creator',
         namePrefix: 'Task PO Dev Creator',
         role: GROUP_ROLE_KEYS.PRODUCT_OWNER
       });
+      // Developer : thành viên && non-lead
       const developerTarget = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_po_dev_target',
@@ -648,22 +703,26 @@ describe('Integration - task.assignment -> task.service.js', () => {
         description: 'po non-lead assigns developer',
         createdBy: creator._id,
         groupId: group._id,
+        // Creator (PO non-lead) assign cho Developer (non-lead)
         assignedTo: [{ userId: developerTarget._id }]
       });
 
       const taskFromDb = await Task.findById(created._id).lean();
+      // thành công
       expect(taskFromDb).toBeTruthy();
       expect(String(taskFromDb.assignedTo[0].userId)).toBe(String(developerTarget._id));
     });
 
     // IT_TASK_ASSIGNMENT_15
-    test('rejects PO non-lead assigning a PM lead and does not persist task', async () => {
+    test('Kiểm tra PO thường không được assign task cho PM lead.', async () => {
+      // PO : tạo group && non-lead
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_po_pmlead_creator',
         namePrefix: 'Task PO PMLead Creator',
         role: GROUP_ROLE_KEYS.PRODUCT_OWNER
       });
+      // PM : thành viên && isleader
       const pmLeadTarget = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_po_pmlead_target',
@@ -685,6 +744,7 @@ describe('Integration - task.assignment -> task.service.js', () => {
           description: 'po non-lead cannot assign pm lead',
           createdBy: creator._id,
           groupId: group._id,
+          // Creator (PO non-lead) assign cho PM (lead)
           assignedTo: [{ userId: pmLeadTarget._id }]
         })
       ).rejects.toThrow('PM, PO');
@@ -694,13 +754,15 @@ describe('Integration - task.assignment -> task.service.js', () => {
     });
 
     // IT_TASK_ASSIGNMENT_16
-    test('rejects PO non-lead assigning another PO non-lead and does not persist task', async () => {
+    test('Kiểm tra PO thường không được assign cho PO thường khác.', async () => {
+      // PO : tạo group && non-lead
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_po_po_creator',
         namePrefix: 'Task PO PO Creator',
         role: GROUP_ROLE_KEYS.PRODUCT_OWNER
       });
+      // PO : thành viên, non-lead
       const poTarget = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_po_po_target',
@@ -721,16 +783,20 @@ describe('Integration - task.assignment -> task.service.js', () => {
           description: 'po non-lead cannot assign po non-lead',
           createdBy: creator._id,
           groupId: group._id,
+          // Creator (PO non-lead) assign cho PO (non-lead)
           assignedTo: [{ userId: poTarget._id }]
         })
       ).rejects.toThrow('PM, PO');
 
       const persisted = await Task.find({ title }).lean();
+
+      //fail
       expect(persisted).toHaveLength(0);
     });
 
     // IT_TASK_ASSIGNMENT_17
-    test('allows PO lead assigning a PM lead and persists the assignee', async () => {
+    test('Kiểm tra PO lead có quyền assign cho PM lead.', async () => {
+      // PO : tạo group && isleader
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_polead_pmlead_creator',
@@ -738,6 +804,7 @@ describe('Integration - task.assignment -> task.service.js', () => {
         role: GROUP_ROLE_KEYS.PRODUCT_OWNER,
         isLeader: true
       });
+      // PM : thanh vien && isleader
       const pmLeadTarget = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_polead_pmlead_target',
@@ -758,6 +825,7 @@ describe('Integration - task.assignment -> task.service.js', () => {
         description: 'po lead assigns pm lead',
         createdBy: creator._id,
         groupId: group._id,
+        // Creator (PO lead) assign cho PM (lead)
         assignedTo: [{ userId: pmLeadTarget._id }]
       });
 
@@ -767,7 +835,8 @@ describe('Integration - task.assignment -> task.service.js', () => {
     });
 
     // IT_TASK_ASSIGNMENT_18
-    test('allows PO lead assigning a developer non-lead and persists without restricted side effects', async () => {
+    test('Kiểm tra PO lead assign Developer thường vào task trong folder riêng, đồng thời hệ thống cấp folder access đúng cho Developer đó.', async () => {
+      // PO : tạo group && isleader
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_polead_dev_creator',
@@ -775,6 +844,7 @@ describe('Integration - task.assignment -> task.service.js', () => {
         role: GROUP_ROLE_KEYS.PRODUCT_OWNER,
         isLeader: true
       });
+      // developer : nonlead
       const developerTarget = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_polead_dev_target',
@@ -792,6 +862,7 @@ describe('Integration - task.assignment -> task.service.js', () => {
         group,
         creator,
         namePrefix: 'task_polead_dev_folder',
+        // developer không được access folder này
         memberAccessUserIds: []
       });
       const title = buildTaggedValue('task_polead_dev_assign', TEST_RUN_ID);
@@ -802,6 +873,7 @@ describe('Integration - task.assignment -> task.service.js', () => {
         createdBy: creator._id,
         groupId: group._id,
         folderId: folder._id,
+        // Creator (PO lead) assign task cho Developer không tham gia folder
         assignedTo: [{ userId: developerTarget._id }]
       });
 
@@ -809,25 +881,29 @@ describe('Integration - task.assignment -> task.service.js', () => {
       const folderFromDb = await Folder.findById(folder._id).lean();
       const folderAccessIds = folderFromDb.memberAccess.map(item => String(item.userId));
 
+      // task vẫn được tạo và giao cho Developer
       expect(taskFromDb).toBeTruthy();
       expect(String(taskFromDb.assignedTo[0].userId)).toBe(String(developerTarget._id));
       expect(folderAccessIds).toEqual([String(developerTarget._id)]);
     });
 
     // IT_TASK_ASSIGNMENT_19
-    test('keeps only valid assignees when PO non-lead mixes allowed and restricted targets', async () => {
+    test('Kiểm tra PO non-lead khi assign một danh sách hỗn hợp thì hệ thống chỉ giữ Developer hợp lệ, loại PO bị hạn chế.', async () => {
+      // PO : tạo group && non-lead
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_po_mixed_creator',
         namePrefix: 'Task PO Mixed Creator',
         role: GROUP_ROLE_KEYS.PRODUCT_OWNER
       });
+      // Developer : tham gia group
       const validDeveloper = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_po_mixed_dev',
         namePrefix: 'Task PO Mixed Dev',
         role: GROUP_ROLE_KEYS.DEVELOPER
       });
+      // PO : PO && non-lead
       const restrictedPo = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_po_mixed_po',
@@ -845,6 +921,7 @@ describe('Integration - task.assignment -> task.service.js', () => {
         group,
         creator,
         namePrefix: 'task_po_mixed_folder',
+        // folder không có cả developer và PO
         memberAccessUserIds: []
       });
       const title = buildTaggedValue('task_po_mixed_assign', TEST_RUN_ID);
@@ -855,6 +932,7 @@ describe('Integration - task.assignment -> task.service.js', () => {
         createdBy: creator._id,
         groupId: group._id,
         folderId: folder._id,
+        // Creator (PO non-lead) assign cho Developer và PO (non-lead)
         assignedTo: [
           { userId: validDeveloper._id },
           { userId: restrictedPo._id }
@@ -866,6 +944,7 @@ describe('Integration - task.assignment -> task.service.js', () => {
       const assignedIds = taskFromDb.assignedTo.map(item => String(item.userId));
       const folderAccessIds = folderFromDb.memberAccess.map(item => String(item.userId));
 
+      // Task vẫn được tạo nhưng chỉ assign cho Developer
       expect(taskFromDb).toBeTruthy();
       expect(assignedIds).toEqual([String(validDeveloper._id)]);
       expect(folderAccessIds).toContain(String(validDeveloper._id));
@@ -873,13 +952,15 @@ describe('Integration - task.assignment -> task.service.js', () => {
     });
 
     // IT_TASK_ASSIGNMENT_20
-    test('persists self only when PO non-lead mixes self with a restricted target', async () => {
+    test('Kiểm tra self-assignment luôn được ưu tiên hợp lệ, kể cả khi danh sách assign có thêm một PO khác bị hạn chế.', async () => {
+      // PO : tạo group && non-lead
       const creator = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_po_self_creator',
         namePrefix: 'Task PO Self Creator',
         role: GROUP_ROLE_KEYS.PRODUCT_OWNER
       });
+      // PO : thành viên && non-lead
       const restrictedPo = await createUser({
         testRunId: TEST_RUN_ID,
         emailPrefix: 'task_po_self_restricted',
@@ -899,6 +980,7 @@ describe('Integration - task.assignment -> task.service.js', () => {
         description: 'po self plus restricted target',
         createdBy: creator._id,
         groupId: group._id,
+        // Creator (PO non-lead) assign cho PO (non-lead) và chính mình
         assignedTo: [
           { userId: creator._id },
           { userId: restrictedPo._id }
@@ -908,6 +990,7 @@ describe('Integration - task.assignment -> task.service.js', () => {
       const taskFromDb = await Task.findById(created._id).lean();
       const assignedIds = taskFromDb.assignedTo.map(item => String(item.userId));
 
+      // Task vẫn được tạo nhưng chỉ assign cho Creator
       expect(taskFromDb).toBeTruthy();
       expect(assignedIds).toEqual([String(creator._id)]);
       expect(assignedIds).not.toContain(String(restrictedPo._id));

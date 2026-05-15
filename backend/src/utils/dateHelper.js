@@ -8,6 +8,15 @@
  * @param {*} date - Date object hoặc string
  * @returns {Boolean}
  */
+// UT_DATE_01
+// UT_DATE_02
+// UT_DATE_03
+// UT_DATE_04
+// UT_DATE_05
+// UT_DATE_06
+// UT_DATE_07
+// UT_DATE_08
+// UT_DATE_09
 const isValidDate = (date) => {
   if (!date) return false;
   const dateObj = new Date(date);
@@ -55,6 +64,9 @@ const formatDateToYYYYMMDD = (date) => {
  * @param {Number} month - Tháng (1-12)
  * @returns {Date}
  */
+// UT_DATE_12
+// UT_DATE_13
+// UT_DATE_14
 const getFirstDayOfMonth = (year, month) => {
   return new Date(year, month - 1, 1);
 };
@@ -65,6 +77,12 @@ const getFirstDayOfMonth = (year, month) => {
  * @param {Number} month - Tháng (1-12)
  * @returns {Date}
  */
+// UT_DATE_15
+// UT_DATE_16
+// UT_DATE_17
+// UT_DATE_18
+// UT_DATE_19
+// UT_DATE_20
 const getLastDayOfMonth = (year, month) => {
   return new Date(year, month, 0, 23, 59, 59, 999);
 };
@@ -75,6 +93,11 @@ const getLastDayOfMonth = (year, month) => {
  * @param {Number} days - Số ngày cần thêm
  * @returns {Date}
  */
+// UT_DATE_21
+// UT_DATE_22
+// UT_DATE_23
+// UT_DATE_24
+// UT_DATE_25
 const addDays = (date, days) => {
   const result = new Date(date);
   result.setDate(result.getDate() + days);

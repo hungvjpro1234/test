@@ -63,10 +63,10 @@ The plan serves as the guiding reference for:
 - Unit testing of selected backend services and utility modules using Jest
 - Integration testing of backend services against a test database using Jest with a real MongoDB instance
 - API-level testing of the backend REST interface using Postman
+- Performance testing of key backend API endpoints using JMeter, targeting the NFR-PERF response time requirement under simulated load conditions within the local environment
 - Code review using a structured checklist applied to backend and frontend source code
 
 **Explicitly excluded from this plan:**
-- **Performance testing** — Load and stress testing is excluded from this SQAP. The test environment is a local Docker-based setup that is not representative of production-scale infrastructure. The team will not plan or conduct load testing as part of this quality assurance cycle.
 - **Browser automation** — Automated end-to-end UI testing via browser automation tools is not included in this plan's quality activities.
 
 ---
@@ -142,6 +142,7 @@ The following product risks are identified from analysis of the SRS and the syst
 | **Frontend test compilation** | ts-jest | Compile and run TypeScript frontend unit tests without a separate build step |
 | **Coverage reporting** | Jest coverage (v8) | Generate LCOV, JSON, and text-format coverage reports for backend and frontend |
 | **API testing** | Postman | Execute REST API test collection with automated assertions against backend endpoints |
+| **Performance testing** | JMeter | Simulate concurrent HTTP load against key backend endpoints to verify NFR-PERF response time requirements |
 | **Code review** | Manual structured checklist | Systematic code quality checklist applied to backend and frontend source files |
 | **Version control** | Git | Source code and test artifact management |
 | **Test environment** | Docker / Docker Compose | Orchestrate backend, MongoDB, and Redis for a reproducible local testing environment |
@@ -154,7 +155,7 @@ The following product risks are identified from analysis of the SRS and the syst
 | **Reliability** | Yes | System test cases for NFR-RELI will verify that all failure paths return descriptive error messages and that the system does not crash without user-facing notification. Code review will assess error-handling coverage in asynchronous backend paths and frontend components. |
 | **Integrity** | Yes | System test cases for FR-AUTH, FR-ADMIN, and NFR-SEC will verify access control enforcement, token validation, role-based permission checks, and per-user data isolation. API tests via Postman will verify that protected endpoints reject unauthorized requests with appropriate HTTP status codes. |
 | **Usability** | Yes | System test cases for NFR-USAB will verify multi-language display switching, dark/light/auto theme application, responsive layout on desktop and mobile viewports, and error message clarity in user-facing language. |
-| **Efficiency** | Partial | Pagination enforcement on list screens will be verified in system tests. Full throughput testing under concurrent load is excluded from this plan due to environment limitations. |
+| **Efficiency** | Yes | Pagination enforcement on list screens will be verified in system tests. API response time under simulated concurrent load will be verified using JMeter against the NFR-PERF-1 threshold (≤ 3 seconds for basic operations). JMeter tests will be executed in the local Docker environment; results represent baseline behavior rather than production-scale throughput. |
 | **Maintainability** | Partial | Code review will assess code structure, duplication, naming consistency, and component responsibility boundaries. Findings will be documented as defect evidence but are not subject to formal retest within this plan's scope. |
 | **Portability** | No | The system targets web, mobile, and Docker-based deployment only. Cross-platform or cross-operating-system portability testing is outside the scope of this student project. |
 | **Flexibility** | No | The system implements a fixed feature set aligned with the SRS. Extensibility testing beyond defined requirements is not planned. |
@@ -170,6 +171,7 @@ The following schedule defines the sequence and activities of the quality assura
 | Phase 3 | System test case design and execution (all FR/NFR modules, black-box techniques) | System test report and black-box coverage matrix |
 | Phase 4 | Unit test and integration test design and execution (selected backend services and utilities; frontend utility) | Unit test scripts, coverage reports, and unit test report |
 | Phase 5 | API test design and execution via Postman (REST interface for key backend modules) | Postman collection and API test execution report |
+| Phase 6 | Performance test design and execution via JMeter (key backend endpoints, NFR-PERF verification) | JMeter test scripts and performance test execution report |
 
 ---
 
@@ -206,6 +208,7 @@ The following features are within the active testing scope of this SQAP. All ent
 
 | NFR Identifier | Description | Planned Testing Types |
 | :--- | :--- | :--- |
+| NFR-PERF | API response time for basic operations (view, create, update task; view profile; notifications) does not exceed 3 seconds under normal conditions; list screens apply pagination | Performance test (JMeter), System test |
 | NFR-SEC | Password hashing verification, unauthenticated access prevention, per-user data isolation, brute-force login protection | System test, Code review |
 | NFR-USAB | Responsive layout (desktop and mobile), dark/light/auto theme switching, multi-language EN/VI, error message clarity | System test |
 | NFR-RELI | All failed operations return descriptive error messages; the system does not crash without a user-visible notification | System test |
@@ -219,7 +222,6 @@ The following features are explicitly excluded from active testing within this S
 
 | Feature / Area | Reason for Exclusion |
 | :--- | :--- |
-| **Load and stress performance testing** | The test environment is a local Docker-based development setup not representative of production-scale infrastructure. Production-load simulation is not feasible within the project's resource and environment constraints. Performance testing is excluded from all phases of this plan. |
 | **Google OAuth end-to-end flow** | Google OAuth depends on an external Google identity provider whose behavior cannot be controlled in the local test environment. A complete end-to-end flow requires Google Cloud credentials tied to a live project that are not available in the shared test setup. The feature is addressed at the SRS level and covered by system test design for observable outcomes; full automated end-to-end verification is excluded. |
 | **Email delivery verification** | Password reset and invite email delivery depends on an external SMTP provider. Delivery outcome is a third-party dependency that cannot be deterministically asserted in the local test environment. |
 | **Cloud file storage verification** | File upload persistence to the cloud storage provider depends on an external service. Upload outcomes are tested at the observable UI and API response level in system tests; internal storage state verification is excluded. |
@@ -340,9 +342,9 @@ Traceability between requirements, test cases, and implementation will be mainta
 
 All testing activities described in this SQAP will be conducted in a local development environment using Docker Compose to orchestrate the backend service, MongoDB, and Redis. This environment does not replicate production-scale infrastructure. The following limitations apply:
 
-- API response time measurements will not be representative of production throughput or latency under real user load.
-- Concurrent-user scenarios will be limited to what a single development machine can simulate.
-- Real-time Socket.IO behavior will be tested through single-session or low-concurrency scenarios only.
+- JMeter performance tests will be executed against the local backend instance. Response time measurements and throughput results therefore represent baseline behavior in the development environment and are not directly comparable to production-scale performance.
+- Concurrent-user simulation in JMeter will be constrained by the capacity of a single development machine; results should be interpreted as indicative rather than definitive.
+- Real-time Socket.IO behavior will be tested through single-session or low-concurrency scenarios only; WebSocket load testing is not included.
 - The chatbot service requires a live external AI model endpoint; testing will be limited to observable integration behavior within the local environment.
 
 ### 6.2 Excluded Test Categories
@@ -351,7 +353,6 @@ The following test categories are explicitly outside the scope of this SQAP:
 
 | Category | Reason |
 | :--- | :--- |
-| Performance testing (load/stress) | The local test environment is not representative of production-scale infrastructure. Load simulation is outside the resource constraints of this project. |
 | Browser automation (end-to-end UI) | Automated browser-level testing is not included in the planned quality activities for this cycle. |
 | Mobile application testing | Mobile client testing is deferred due to resource constraints. No mobile-specific test activities are planned within this cycle. |
 | External service integration verification | Google OAuth, cloud file storage, and SMTP email delivery depend on third-party providers outside team control. These cannot be verified deterministically in the local test environment. |
@@ -385,6 +386,8 @@ The following records are to be produced and retained as the quality assurance d
 | Per-module unit test checklists | Checklist documents tracing individual test cases to source functions and recording Pass/Fail results at the test-case level |
 | Postman API test collection | The Postman collection defining test requests and automated assertions for backend REST endpoints |
 | API test execution report | Results of Postman collection runs, including Pass/Fail status per request and assertion |
+| JMeter test scripts | JMeter test plan files (.jmx) defining thread groups, samplers, and assertions for performance test scenarios |
+| Performance test execution report | JMeter-generated results covering response time, throughput, and error rate for tested API endpoints, evaluated against the NFR-PERF-1 threshold |
 
 ---
 
@@ -397,3 +400,4 @@ The following records are to be produced and retained as the quality assurance d
 | Phase 3 | System testing | System test report, black-box coverage matrix |
 | Phase 4 | Unit and integration testing | Test scripts, coverage reports, unit test report, per-module checklists |
 | Phase 5 | API testing | Postman collection, API test execution report |
+| Phase 6 | Performance testing (JMeter) | JMeter test scripts, performance test execution report |

@@ -38,6 +38,7 @@ const {
   canDeleteTask
 } = require('../utils/groupPermissions');
 
+// UT_TC : Chuẩn hóa ID về dạng logic thống nhất
 const normalizeId = value => {
   if (!value) return null;
   if (typeof value === 'string') return value;
@@ -66,6 +67,7 @@ const toPlainTask = (taskDoc) => {
   return taskDoc;
 };
 
+// UT_TC : gom tất cả user liên quan đến task vào một danh sách recipients, đồng thời chuẩn hóa ID và loại bỏ trùng lặp. (createdBy, assignedTo, groupDoc.members)
 const buildRecipientList = (task, groupDoc = null) => {
   const recipients = new Set();
   const push = (value) => {
@@ -79,8 +81,10 @@ const buildRecipientList = (task, groupDoc = null) => {
     return [];
   }
 
+  // Push createdBy
   push(task.createdBy);
 
+  // Push assignedTo
   if (Array.isArray(task.assignedTo)) {
     task.assignedTo.forEach((assignment) => {
       if (!assignment) return;
@@ -93,6 +97,7 @@ const buildRecipientList = (task, groupDoc = null) => {
     });
   }
 
+  // Push group members
   if (groupDoc && Array.isArray(groupDoc.members)) {
     groupDoc.members.forEach((member) => {
       if (!member) return;
@@ -105,6 +110,7 @@ const buildRecipientList = (task, groupDoc = null) => {
     });
   }
 
+  // Trả về mảng ID
   return Array.from(recipients);
 };
 
@@ -192,6 +198,8 @@ const getRequesterContext = async (requesterId) => {
  * @returns {Object} { validIds: Array, restrictedIds: Array, errorMessage: String }
  */
 const validateAssignmentPermissions = async (assignerContext, targetUserIds, assignerId) => {
+  // UT_ASSIGN_01
+  // UT_ASSIGN_02
   if (!targetUserIds || targetUserIds.length === 0) {
     return { validIds: [], restrictedIds: [], errorMessage: null };
   }
@@ -222,12 +230,15 @@ const validateAssignmentPermissions = async (assignerContext, targetUserIds, ass
     const normalizedUserId = normalizeId(userId);
 
     // Luôn cho phép gán chính mình (self-assignment)
+    // IT_TASK_ASSIGNMENT_20 (self-assignment luôn được xử lý trước mọi rule khác)
+    // UT_ASSIGN_03 // UT_ASSIGN_05
     if (normalizedUserId === normalizedAssignerId) {
       validIds.push(userId);
       return;
     }
 
     const targetUser = userMap[normalizedUserId];
+    // UT_ASSIGN_06
     if (!targetUser) {
       restrictedIds.push(userId);
       return;
@@ -243,17 +254,34 @@ const validateAssignmentPermissions = async (assignerContext, targetUserIds, ass
     // Rule 1: PM, PO (non-lead) có thể assign cho các role khác ngoại trừ:
     //   - Người có thuộc tính lead có role PM, PO (PM lead, PO lead)
     //   - PM, PO khác (non-lead)
+    // IT_TASK_ASSIGNMENT_03
+    // UT_ASSIGN_36 ( chạy vào đây )
     if (isAssignerPMorPO && !isAssignerPMorPOLead) {
-      if (isTargetPMLead || isTargetPOLead || (isTargetPMorPO && !isTargetLeader)) {
+      // IT_TASK_ASSIGNMENT_10 ( không vi phạm các case này )
+      // IT_TASK_ASSIGNMENT_14 ( không vi phạm các case này )
+      if (
+        // IT_TASK_ASSIGNMENT_12
+        isTargetPMLead
+        // IT_TASK_ASSIGNMENT_13
+        || isTargetPOLead
+        // IT_TASK_ASSIGNMENT_11
+        // IT_TASK_ASSIGNMENT_16
+        || (isTargetPMorPO && !isTargetLeader)) {
         restrictedIds.push(userId);
         return;
       }
+      // IT_TASK_ASSIGNMENT_08 (cả khối nói chung nhưng case này rơi vào validIds)
+      // IT_TASK_ASSIGNMENT_09 (cả khối nói chung nhưng case này rơi vào validIds)
       validIds.push(userId);
       return;
     }
 
     // Rule 2: Lead (non-PM/PO) không thể assign cho lead khác nhưng có thể assign cho chính mình và business role khác
+    // IT_TASK_ASSIGNMENT_05
+    // UT_ASSIGN_26
+    // UT_ASSIGN_27
     if (isAssignerLeaderOnly) {
+      // UT_ASSIGN_29
       if (isTargetLeader) {
         restrictedIds.push(userId);
         return;
@@ -263,6 +291,11 @@ const validateAssignmentPermissions = async (assignerContext, targetUserIds, ass
     }
 
     // Rule 3: PM lead, PO lead có thể assign cho các lead khác (và mọi người)
+    // IT_TASK_ASSIGNMENT_04
+    // IT_TASK_ASSIGNMENT_17
+    // IT_TASK_ASSIGNMENT_18 2
+    // UT_ASSIGN_23
+    // UT_ASSIGN_25
     if (isAssignerPMorPOLead) {
       validIds.push(userId);
       return;
@@ -273,6 +306,8 @@ const validateAssignmentPermissions = async (assignerContext, targetUserIds, ass
   });
 
   let errorMessage = null;
+  // UT_ASSIGN_25 ( ko chạy vào đây )
+  // UT_ASSIGN_36 ( ko chạy vào đây )
   if (restrictedIds.length > 0 && validIds.length === 0) {
     if (isAssignerPMorPO && !isAssignerPMorPOLead) {
       errorMessage = 'PM, PO chỉ có thể gán task cho các role khác, không thể gán cho PM/PO lead hoặc PM/PO khác.';
@@ -315,6 +350,7 @@ const enforceFolderAccess = async ({
   });
 };
 
+// UT_TC: Tạo điều kiện để query Mongo để lọc task theo folder
 const buildFolderClauses = folder => {
   if (!folder) {
     return [];
@@ -335,6 +371,7 @@ const buildFolderClauses = folder => {
   return [{ folderId: folder._id }];
 };
 
+// IT_TASK_HELPER_MAP_04
 const buildScopedFolderFilter = async ({
   group,
   groupId,
@@ -353,6 +390,7 @@ const buildScopedFolderFilter = async ({
     return [];
   }
 
+  // IT_TASK_HELPER_MAP_02
   if (folderId) {
     try {
       const { folder } = await enforceFolderAccess({
@@ -378,6 +416,8 @@ const buildScopedFolderFilter = async ({
     return [];
   }
 
+  // IT_TASK_HELPER_MAP_03 : tìm các folder trong group và có memberAccess là requesterId
+  // IT_TASK_HELPER_MAP_04
   const assignedFolders = await Folder.find({
     groupId,
     'memberAccess.userId': requesterId
@@ -388,6 +428,7 @@ const buildScopedFolderFilter = async ({
   if (!assignedFolders || assignedFolders.length === 0) {
     // Không có folder được gán cho user này → trả về filter rỗng để không lỗi 403/404,
     // nhưng cũng không trả ra task nào.
+    // IT_TASK_HELPER_MAP_04
     return [
       {
         folderId: { $in: [] }
@@ -399,12 +440,14 @@ const buildScopedFolderFilter = async ({
   const defaultFolder = assignedFolders.find(folder => folder.isDefault);
   const scopedFolders = assignedFolders.filter(folder => !folder.isDefault);
 
+  // IT_TASK_HELPER_MAP_03
   if (scopedFolders.length > 0) {
     clauses.push({
       folderId: { $in: scopedFolders.map(folder => folder._id) }
     });
   }
 
+  // IT_TASK_HELPER_MAP_01
   if (defaultFolder) {
     clauses.push({
       $or: [
@@ -418,6 +461,7 @@ const buildScopedFolderFilter = async ({
   return clauses;
 };
 
+// UT_TC: kiểm tra user này có trong folder folderDoc.memberAccess hay không
 const hasFolderAssignment = (folderDoc, requesterId) => {
   if (!folderDoc || !Array.isArray(folderDoc.memberAccess)) {
     return false;
@@ -562,6 +606,7 @@ class TaskService {
    * @param {Object} taskData - Dữ liệu task
    * @returns {Promise<Object>} Task đã tạo
    */
+  // IT_TC: Tao task
   async createTask(taskData) {
     const creatorId = normalizeId(taskData.createdBy);
     if (!creatorId) {
@@ -596,6 +641,7 @@ class TaskService {
       taskData.groupId = groupId;
 
       // Resolve folder first to check assignment for QA role
+      // IT_TASK_FOLDER_ACCESS_02
       const { folder } = await enforceFolderAccess({
         group,
         groupId,
@@ -606,6 +652,7 @@ class TaskService {
         requireWrite: true
       });
 
+      // if folder is not found, set folderId to null
       taskData.folderId = folder ? folder._id : null;
 
       // Check folder assignment for QA role before checking create permission
@@ -638,14 +685,19 @@ class TaskService {
         creatorId
       );
 
+      // IT_TASK_ASSIGNMENT_07 (validIds.length > 0 --> ko throws lỗi)
+      // IT_TASK_ASSIGNMENT_19 (validIds.length > 0 --> ko throws lỗi)
       if (permissionCheck.errorMessage && permissionCheck.validIds.length === 0) {
         raiseError(permissionCheck.errorMessage, HTTP_STATUS.FORBIDDEN);
       }
-
       // Chỉ giữ lại các IDs hợp lệ
       assignedIds = permissionCheck.validIds;
+
+      
     } else if (!canAssignToOthers && assignedIds.length > 0) {
       // If user cannot assign to others, they can only assign to themselves
+      // IT_TASK_ASSIGNMENT_02
+      // IT_TASK_ASSIGNMENT_06 ( self-assign, vẫn được filter )
       const selfOnly = assignedIds.filter(id => id === creatorId);
       if (selfOnly.length !== assignedIds.length) {
         raiseError('Bạn chỉ có thể gán task cho chính mình. Chỉ PM và Product Owner mới có thể gán task cho người khác.', HTTP_STATUS.FORBIDDEN);
@@ -661,6 +713,7 @@ class TaskService {
     assignedIds = Array.from(new Set(assignedIds));
 
     if (groupMemberIds) {
+      // IT_TASK_ASSIGNMENT_01
       const outsideGroup = assignedIds.filter(id => !groupMemberIds.has(id));
       if (outsideGroup.length > 0) {
         raiseError(ERROR_MESSAGES.USER_NOT_IN_GROUP);
@@ -669,6 +722,7 @@ class TaskService {
 
     // If task has a folder, check and auto-grant folder access for assigned users
     // Personal workspace owners can freely assign tasks without folder access restrictions
+    // IT_TASK_ASSIGNMENT_18 1 ( chạy khối này để người được gán task chưa có quyền truy cập vào folder trước đó vẫn truy cập được sau khi được gọi )
     if (taskData.folderId && targetGroup && !isPersonalOwner) {
       const folder = await Folder.findById(taskData.folderId);
       if (folder && !folder.isDefault) {
@@ -676,6 +730,7 @@ class TaskService {
           (folder.memberAccess || []).map(access => normalizeId(access.userId)).filter(Boolean)
         );
 
+        // IT_TASK_FOLDER_ACCESS_01
         // Find assignees who don't have folder access
         const assigneesWithoutAccess = assignedIds.filter(id => !folderMemberAccess.has(id));
 
@@ -684,6 +739,7 @@ class TaskService {
             // PM/Product Owner can auto-grant folder access to assigned users
             console.log(`[TaskService] Auto-granting folder access to ${assigneesWithoutAccess.length} users`);
 
+            // IT_TASK_FOLDER_ACCESS_01
             // Add these users to folder's memberAccess
             const newMemberAccess = assigneesWithoutAccess.map(userId => ({
               userId: new mongoose.Types.ObjectId(userId),
@@ -692,6 +748,7 @@ class TaskService {
             }));
 
             folder.memberAccess = folder.memberAccess || [];
+            // IT_TASK_FOLDER_ACCESS_01
             folder.memberAccess.push(...newMemberAccess);
             await folder.save();
 
@@ -811,6 +868,7 @@ class TaskService {
    * @param {Object} options - Options cho sort, pagination
    * @returns {Promise<Object>} { tasks, pagination }
    */
+  // IT_TC: Lay danh sach task
   async getAllTasks(filters = {}, options = {}, requesterId = null) {
     const { status, priority, search, groupId, folderId } = filters;
     const { sortBy, order, page, limit } = options;
@@ -868,6 +926,7 @@ class TaskService {
 
       queryFilters.push({ groupId });
 
+      // IT_TASK_HELPER_MAP_01
       const folderClauses = await buildScopedFolderFilter({
         group,
         groupId,

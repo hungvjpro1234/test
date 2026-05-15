@@ -94,7 +94,7 @@ describe('validateAssignmentPermissions', () => {
   // -------------------------------------------------------
   describe('Edge cases', () => {
     // UT_ASSIGN_01
-    it('Empty targetUserIds → { validIds: [], restrictedIds: [], errorMessage: null }', async () => {
+    it('Khi truyền danh sách user cần assign là [], hàm phải trả về kết quả rỗng, không lỗi.', async () => {
       const result = await validateAssignmentPermissions(
         { role: R.PM, isLeader: false },
         [],
@@ -106,7 +106,7 @@ describe('validateAssignmentPermissions', () => {
     });
 
     // UT_ASSIGN_02
-    it('null targetUserIds → empty result', async () => {
+    it('Khi danh sách target bị null, hàm vẫn xử lý an toàn, không crash', async () => {
       const result = await validateAssignmentPermissions(
         { role: R.PM },
         null,
@@ -122,11 +122,13 @@ describe('validateAssignmentPermissions', () => {
   // -------------------------------------------------------
   describe('Self-assignment (luôn được phép bất kể role)', () => {
     // UT_ASSIGN_03
-    it('PM non-lead self-assign → validIds', async () => {
+    it('PM không phải lead vẫn được gán task cho chính mình.', async () => {
       mockUsers([]);
       const result = await validateAssignmentPermissions(
         { role: R.PM, isLeader: false },
+        // targetUserIds
         ['assigner1'],
+        // assignerId
         'assigner1'
       );
       expect(result.validIds).toContain('assigner1');
@@ -152,7 +154,7 @@ describe('validateAssignmentPermissions', () => {
   // -------------------------------------------------------
   describe('Target user không tồn tại hoặc inactive', () => {
     // UT_ASSIGN_06
-    it('User không có trong DB (User.find trả về []) → restrictedIds', async () => {
+    it('Khi target user không có trong DB, hoặc bị lọc do isActive: true, thì bị đưa vào restrictedIds.', async () => {
       mockUsers([]);
       const result = await validateAssignmentPermissions(
         { role: R.PM, isLeader: false },
@@ -171,7 +173,7 @@ describe('validateAssignmentPermissions', () => {
     const assignerId = 'pm-lead';
 
     // UT_ASSIGN_23
-    it('PM lead → ĐƯỢC gán cho tất cả mọi người', async () => {
+    it('PM có isLeader: true được assign cho mọi loại user: developer, PM non-lead, PO lead, BA lead.', async () => {
       mockUsers([
         makeUser('dev1', R.DEVELOPER, false),
         makeUser('pm2', R.PM, false),
@@ -196,7 +198,7 @@ describe('validateAssignmentPermissions', () => {
     const assignerId = 'po-lead';
 
     // UT_ASSIGN_25
-    it('PO lead → không có errorMessage khi tất cả valid', async () => {
+    it('PO lead assign cho developer non-lead là hợp lệ, và khi tất cả hợp lệ thì errorMessage = null.', async () => {
       mockUsers([makeUser('dev1', R.DEVELOPER, false)]);
       const result = await validateAssignmentPermissions(assignerCtx, ['dev1'], assignerId);
       expect(result.errorMessage).toBeNull();
@@ -237,14 +239,17 @@ describe('validateAssignmentPermissions', () => {
   // -------------------------------------------------------
   describe('errorMessage chỉ set khi TẤT CẢ targets là restricted', () => {
     // UT_ASSIGN_36
-    it('Some valid → errorMessage = null', async () => {
+    it('Chỉ 1 trong 2 người assign là không hợp lệ -> errorMessage = null', async () => {
       mockUsers([
         makeUser('dev1', R.DEVELOPER, false),
         makeUser('pm2', R.PM, false)
       ]);
       const result = await validateAssignmentPermissions(
+        // assigner context ( assigner1 )
         { role: R.PM, isLeader: false },
+        // assign cho cả dev (được phép) và pm (không được phép)
         ['dev1', 'pm2'],
+        // PM, non-lead
         'assigner1'
       );
       expect(result.errorMessage).toBeNull();
